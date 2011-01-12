@@ -62,7 +62,7 @@ QEMUGDB = $(shell if $(QEMU) -nographic -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 
-CC	:= $(GCCPREFIX)gcc -pipe
+CC	:= $(GCCPREFIX)gcc-4.5 -pipe
 AS	:= $(GCCPREFIX)as
 AR	:= $(GCCPREFIX)ar
 LD	:= $(GCCPREFIX)ld
