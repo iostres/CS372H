@@ -5,28 +5,23 @@ qemuopts="-hda obj/kern/kernel.img"
 
 
 $make
-
-check () {
-	pts=20
-	echo_n "Page directory: "
-	if grep "check_boot_pgdir() succeeded!" jos.out >/dev/null
-	then
-		pass
-	else
-		fail
-	fi
-
-	pts=30
-	echo_n "Page management: "
-	if grep "page_check() succeeded!" jos.out >/dev/null
-	then
-		pass
-	else
-		fail
-	fi
-}
-
 run
-check
+
+# The ugly slashes are because () are egrep special characters.
+pts=10
+quicktest 'Physical page management' \
+	'check_page_alloc\(\) succeeded!' \
+
+showpart A
+
+pts=30
+quicktest 'Page table management' \
+	'page_check\(\) succeeded!' \
+
+pts=20
+quicktest 'Page directory' \
+	'check_boot_pgdir\(\) succeeded!' \
+
+showpart B
 
 showfinal

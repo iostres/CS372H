@@ -122,3 +122,48 @@ fail () {
 	fi
 }
 
+#
+# User tests
+#
+
+quicktest () {
+	perl -e "print '$1: '"
+	shift
+	checkregexps "$@"
+}
+
+checkregexps () {
+	okay=yes
+
+	not=false
+	for i
+	do
+		if [ "x$i" = "x!" ]
+		then
+			not=true
+		elif $not
+		then
+			if egrep "^$i\$" jos.out >/dev/null
+			then
+				echo "got unexpected line '$i'"
+				okay=no
+			fi
+			not=false
+		else
+			egrep "^$i\$" jos.out >/dev/null
+			if [ $? -ne 0 ]
+			then
+				echo "missing '$i'"
+				okay=no
+			fi
+			not=false
+		fi
+	done
+	if [ "$okay" = "yes" ]
+	then
+		pass
+	else
+		fail
+	fi
+}
+
