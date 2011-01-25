@@ -118,6 +118,8 @@ USER_CFLAGS := $(CFLAGS) -DJOS_USER -gstabs
 # Include Makefrags for subdirectories
 include boot/Makefrag
 include kern/Makefrag
+include lib/Makefrag
+include user/Makefrag
 
 
 IMAGES = $(OBJDIR)/kern/kernel.img
@@ -175,6 +177,7 @@ grade: $(LABSETUP)grade-lab$(LAB).sh
 
 LAB_NAME = $(COURSE)-os-lab$(LAB)
 turnin: tarball
+	@echo
 	@echo "Are you sure you want to turn in this lab to \"$(LAB_NAME)\"? If Yes, press any key (and Enter) to continue. Else, press Ctrl-C to abort"
 	@read p 
 	turnin --submit $(GRADER) $(LAB_NAME) lab$(LAB)-handin.tar.gz
@@ -185,6 +188,27 @@ turnin-part%:
 tarball: realclean
 	tar cf - `find . -type f | grep -v '^\.*$$' | grep -v '/CVS/' | grep -v '/\.svn/' | grep -v 'lab[0-9].*\.tar\.gz'` | gzip > lab$(LAB)-handin.tar.gz
 
+# For test runs
+prep-%:
+	$(V)rm -f $(OBJDIR)/kern/init.o $(IMAGES)
+	$(V)$(MAKE) "DEFS=-DTEST=_binary_obj_user_$*_start -DTESTSIZE=_binary_obj_user_$*_size" $(IMAGES)
+	$(V)rm -f $(OBJDIR)/kern/init.o
+
+run-%-nox-gdb: .gdbinit
+	$(V)$(MAKE) --no-print-directory prep-$*
+	$(QEMU) -nographic $(QEMUOPTS) -S $(QEMUGDB)
+
+run-%-gdb: .gdbinit
+	$(V)$(MAKE) --no-print-directory prep-$*
+	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+
+run-%-nox:
+	$(V)$(MAKE) --no-print-directory prep-$*
+	$(QEMU) -nographic $(QEMUOPTS)
+
+run-%:
+	$(V)$(MAKE) --no-print-directory prep-$*
+	$(QEMU) $(QEMUOPTS)
 
 # This magic automatically generates makefile dependencies
 # for header files included from C source files we compile,
