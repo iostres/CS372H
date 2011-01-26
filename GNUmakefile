@@ -175,12 +175,13 @@ grade: $(LABSETUP)grade-lab$(LAB).sh
 
 LAB_NAME = $(COURSE)-os-lab$(LAB)
 turnin: tarball
+	@echo
 	@echo "Are you sure you want to turn in this lab to \"$(LAB_NAME)\"? If Yes, press any key (and Enter) to continue. Else, press Ctrl-C to abort"
 	@read p 
 	turnin --submit $(GRADER) $(LAB_NAME) lab$(LAB)-handin.tar.gz
 
 turnin-part%:
-	$(MAKE) turnin "LAB=$(LAB)`echo $* | tr \[A-Z\] \[a-z\]`"
+	$(MAKE) turnin "LAB=$(LAB)`echo '$*' | tr \[A-Z\] \[a-z\]`"
 
 tarball: realclean
 	tar cf - `find . -type f | grep -v '^\.*$$' | grep -v '/CVS/' | grep -v '/\.svn/' | grep -v 'lab[0-9].*\.tar\.gz'` | gzip > lab$(LAB)-handin.tar.gz
