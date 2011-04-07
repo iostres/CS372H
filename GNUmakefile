@@ -196,6 +196,9 @@ turnin: tarball
 turnin-part%:
 	$(MAKE) turnin "LAB=$(LAB)`echo '$*' | tr \[A-Z\] \[a-z\]`"
 
+turnin-project:
+	$(MAKE) turnin 'LAB=-project'
+
 tarball: realclean
 	tar cf - `find . -type f | grep -v '^\.*$$' | grep -v '/CVS/' | grep -v '/\.svn/' | grep -v 'lab[0-9].*\.tar\.gz'` | gzip > lab$(LAB)-handin.tar.gz
 
