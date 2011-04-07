@@ -72,6 +72,8 @@
 #define PTE_AVAIL	0xE00	// Available for software use
 
 // Only flags in PTE_USER may be used in system calls.
+// Note that PTE_USER also contains the software bits, so
+// do not use it as a synonym for PTE_P | PTE_W | PTE_U.
 #define PTE_USER	(PTE_AVAIL | PTE_P | PTE_W | PTE_U)
 
 // Address in page table or page directory entry
