@@ -8,6 +8,9 @@
 #include <inc/stdarg.h>
 #include <inc/error.h>
 
+
+int color = 0x0700;
+
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only. 
@@ -43,11 +46,11 @@ printnum(void (*putch)(int, void*), void *putdat,
 	} else {
 		// print any needed pad characters before first digit
 		while (--width > 0)
-			putch(padc, putdat);
+			putch(padc | color, putdat);
 	}
 
 	// then print this (the least significant) digit
-	putch("0123456789abcdef"[num % base], putdat);
+	putch("0123456789abcdef"[num % base] | color, putdat);
 }
 
 // Get an unsigned int of various possible sizes from a varargs list,
@@ -80,20 +83,55 @@ getint(va_list *ap, int lflag)
 // Main function to format and print a string.
 void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
 
+static int ansi_to_cga_color[] = {
+	0, /* black */
+	4, /* red */
+	2, /* green */
+	7, /* yellow */
+	1, /* blue */
+	5, /* magenta */
+	3, /* cyan */
+	7, /* white */
+};
+
 void
 vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 {
 	register const char *p;
 	register int ch, err;
 	unsigned long long num;
-	int base, lflag, width, precision, altflag;
+	int base, lflag, width, precision, altflag, c_num;
 	char padc;
 
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
-			if (ch == '\0')
+			if (ch == '\0') {
 				return;
-			putch(ch, putdat);
+			} else if (ch == '[') {
+				ch = *(unsigned char *) fmt++;
+				while (ch != 'm') {
+					c_num = 0;
+					while (ch >= '0' && ch <= '9') {
+						c_num = c_num * 10 + ch - '0';
+						ch = *(unsigned char *) fmt++;
+					}
+					if (c_num >= 30 && c_num <=37) {
+						/* it's foreground */
+						c_num -= 30;
+						color &= 0xF0FF;
+						color |= (ansi_to_cga_color[c_num] << 8);
+					} else if (c_num >= 40 && c_num <=47) {
+						/* it's background */
+						c_num -= 40;
+						color &= 0xFFF;
+						color |= (ansi_to_cga_color[c_num] << 12);
+					}
+					if (ch == ';') {
+						ch = *(unsigned char *) fmt++;
+					}
+				}
+			} else 
+				putch(ch | color, putdat);
 		}
 
 		// Process a %-escape sequence
@@ -158,7 +196,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 
 		// character
 		case 'c':
-			putch(va_arg(ap, int), putdat);
+			putch(va_arg(ap, int) | color, putdat);
 			break;
 
 		// error message
@@ -178,21 +216,21 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 				p = "(null)";
 			if (width > 0 && padc != '-')
 				for (width -= strnlen(p, precision); width > 0; width--)
-					putch(padc, putdat);
+					putch(padc | color, putdat);
 			for (; (ch = *p++) != '\0' && (precision < 0 || --precision >= 0); width--)
 				if (altflag && (ch < ' ' || ch > '~'))
-					putch('?', putdat);
+					putch('?' | color, putdat);
 				else
-					putch(ch, putdat);
+					putch(ch | color, putdat);
 			for (; width > 0; width--)
-				putch(' ', putdat);
+				putch(' ' | color, putdat);
 			break;
 
 		// (signed) decimal
 		case 'd':
 			num = getint(&ap, lflag);
 			if ((long long) num < 0) {
-				putch('-', putdat);
+				putch('-' | color, putdat);
 				num = -(long long) num;
 			}
 			base = 10;
@@ -229,12 +267,12 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 
 		// escaped '%' character
 		case '%':
-			putch(ch, putdat);
+			putch(ch | color, putdat);
 			break;
 			
 		// unrecognized escape sequence - just print it literally
 		default:
-			putch('%', putdat);
+			putch('%' | color, putdat);
 			for (fmt--; fmt[-1] != '%'; fmt--)
 				/* do nothing */;
 			break;

@@ -33,7 +33,7 @@ i386_init(void)
 	// Can't call cprintf until after we do this!
 	cons_init();
 
-	cprintf("395 decimal is %o octal!\n", 395);
+	cprintf("[32;45m395[40;31m decimal [37mis %o octal!\n", 395);
 
 	// Test the stack backtrace function (lab 1 only)
 	test_backtrace(5);
