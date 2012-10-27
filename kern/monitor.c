@@ -63,24 +63,39 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	uint32_t *ebp;
 	struct c_frame *fp;
 	struct Eipdebuginfo info;
+	int i;
 	
 	fp = (struct c_frame *) read_ebp();
 
 	while (NULL != fp) {
-		cprintf("ebp %08x eip %08x args %08x %08x %08x %08x %08x\n",
+		cprintf("ebp %08x eip %08x ",
 		    fp,
-		    fp->eip,
-		    fp->args[0],
-		    fp->args[1],
-		    fp->args[2],
-		    fp->args[3],
-		    fp->args[4]);
+		    fp->eip);
 
 		if (0 == debuginfo_eip((uintptr_t)(fp->eip), &info)) {
+			if (info.eip_fn_narg > 5)
+				info.eip_fn_narg = 5;
+			if (info.eip_fn_narg > 0) {
+				cprintf("args (");
+				for (i = 0; i < info.eip_fn_narg; i++) {
+					cprintf("%.*s=%08x", info.arg_name_len[i], info.arg_name[i], fp->args[i]);
+					if (i != info.eip_fn_narg - 1)
+						cprintf(", ");
+				}
+				cprintf(")\n");
+			} else {
+				cprintf("\n");
+			}
 			cprintf("\t%s:%u: %.*s+", info.eip_file, info.eip_line,
 			    info.eip_fn_namelen, info.eip_fn_name);
 			cprintf("%d\n", (uintptr_t)fp->eip - info.eip_fn_addr);
-			
+		} else {
+			cprintf("args (%08x %08x %08x %08x %08x)\n", 
+			    fp->args[0],
+			    fp->args[1],
+			    fp->args[2],
+			    fp->args[3],
+			    fp->args[4]);
 		}
 		fp = (struct c_frame *) fp->prev_ebp;
 	}

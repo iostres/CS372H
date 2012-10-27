@@ -115,7 +115,17 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	info->eip_fn_namelen = 9;
 	info->eip_fn_addr = addr;
 	info->eip_fn_narg = 0;
-
+	info->arg_name[0] = NULL;
+	info->arg_name[1] = NULL;
+	info->arg_name[2] = NULL;
+	info->arg_name[3] = NULL;
+	info->arg_name[4] = NULL;
+	info->arg_name_len[0] = 0;
+	info->arg_name_len[1] = 0;
+	info->arg_name_len[2] = 0;
+	info->arg_name_len[3] = 0;
+	info->arg_name_len[4] = 0;
+	
 	// Find the relevant set of stabs
 	if (addr >= ULIM) {
 		stabs = __STAB_BEGIN__;
@@ -206,8 +216,11 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	if (lfun < rfun)
 		for (lline = lfun + 1;
 		     lline < rfun && stabs[lline].n_type == N_PSYM;
-		     lline++)
+		     lline++) {
+			info->arg_name[info->eip_fn_narg] = stabstr + stabs[lline].n_strx;
+			info->arg_name_len[info->eip_fn_narg] = strfind(info->arg_name[info->eip_fn_narg], ':') - info->arg_name[info->eip_fn_narg];
 			info->eip_fn_narg++;
+		}
 	
 	return 0;
 }
