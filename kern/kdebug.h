@@ -13,6 +13,8 @@ struct Eipdebuginfo {
 	int eip_fn_namelen;		// Length of function name
 	uintptr_t eip_fn_addr;		// Address of start of function
 	int eip_fn_narg;		// Number of function arguments
+	const char *arg_name[5];
+	int arg_name_len[5];
 };
 
 int debuginfo_eip(uintptr_t eip, struct Eipdebuginfo *info);

@@ -16,4 +16,10 @@ int mon_help(int argc, char **argv, struct Trapframe *tf);
 int mon_kerninfo(int argc, char **argv, struct Trapframe *tf);
 int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
 
+struct c_frame {
+	void *prev_ebp;
+	void *eip;
+	unsigned int args[5];
+};
+
 #endif	// !JOS_KERN_MONITOR_H
