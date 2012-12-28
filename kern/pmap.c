@@ -116,14 +116,15 @@ boot_alloc(uint32_t n, uint32_t align)
 	if (boot_freemem == 0)
 		boot_freemem = end;
 
-	// LAB 2: Your code here:
-	//	Step 1: round boot_freemem up to be aligned properly
-	//		(hint: look in types.h for some handy macros)
-	//	Step 2: save current value of boot_freemem as allocated chunk
-	//	Step 3: increase boot_freemem to record allocation
-	//	Step 4: return allocated chunk
+	ROUNDUP(boot_freemem, align);
+	if (maxpa <= ((uint32_t)boot_freemem - 0xf0000000 + n)) {
+		panic("boot_alloc: Not enough memory to allocate %d bytes! boot_freemem=0x%x, maxpa=%d\n", n, boot_freemem, maxpa);
+	}
 
-	return NULL;
+	v = boot_freemem;
+	boot_freemem += n;
+	
+	return v;
 }
 
 // Set up a two-level page table:
@@ -144,9 +145,6 @@ i386_vm_init(void)
 	pde_t* pgdir;
 	uint32_t cr0;
 	size_t n;
-
-	// Delete this line:
-	panic("i386_vm_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
@@ -176,7 +174,8 @@ i386_vm_init(void)
 	// User-level programs will get read-only access to the array as well.
 	// Your code goes here:
 
-
+	pages = boot_alloc(npage * sizeof(struct Page), PGSIZE);
+	
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -288,7 +287,7 @@ check_page_alloc()
 	// eventually causes trouble.
 	LIST_FOREACH(pp0, &page_free_list, pp_link)
 		memset(page2kva(pp0), 0x97, 128);
-
+	
 	LIST_FOREACH(pp0, &page_free_list, pp_link) {
 		// check that we didn't corrupt the free list itself
 		assert(pp0 >= pages);
@@ -424,6 +423,18 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 // Pages are reference counted, and free pages are kept on a linked list.
 // --------------------------------------------------------------
 
+void
+count_free_phy_pages(void)
+{
+	struct Page *pp0;
+	int free_phy_pages = 0;
+	
+	LIST_FOREACH(pp0, &page_free_list, pp_link) {
+		free_phy_pages++;
+	}
+	cprintf("Free physical pages: %d\n", free_phy_pages);
+}
+
 //
 // Initialize page structure and memory free list.
 // After this is done, NEVER use boot_alloc again.  ONLY use the page
@@ -448,10 +459,28 @@ page_init(void)
 	//
 	// Change the code to reflect this.
 	int i;
+	struct Page *mp;
+
 	LIST_INIT(&page_free_list);
 	for (i = 0; i < npage; i++) {
 		pages[i].pp_ref = 0;
-		LIST_INSERT_HEAD(&page_free_list, &pages[i], pp_link);
+	}
+
+	// Mark phy page 0 as in use
+	pages[0].pp_ref = 1;
+
+	// The IO hole [IOPHYSMEM, EXTPHYSMEM)
+	for (i = (IOPHYSMEM / PGSIZE); i < (EXTPHYSMEM / PGSIZE); i++)
+		pages[i].pp_ref = 1;
+
+	// mark kernel space as used
+	for (i = PADDR(0xf0100000) / PGSIZE; i <= PADDR(ROUNDDOWN(boot_freemem - 1, PGSIZE)) / PGSIZE; i++)
+		pages[i].pp_ref = 1;
+	
+	for (i = 1; i < npage; i++) {
+		if (pages[i].pp_ref == 0) {
+			LIST_INSERT_HEAD(&page_free_list, &pages[i], pp_link);
+		}
 	}
 }
 
@@ -483,8 +512,15 @@ page_initpp(struct Page *pp)
 int
 page_alloc(struct Page **pp_store)
 {
-	// Fill this function in
-	return -E_NO_MEM;
+	if (LIST_EMPTY(&page_free_list))
+		return -E_NO_MEM;
+
+	*pp_store = LIST_FIRST(&page_free_list);
+	LIST_REMOVE(*pp_store, pp_link);
+
+	page_initpp(*pp_store);
+
+	return 0;
 }
 
 //
@@ -494,7 +530,7 @@ page_alloc(struct Page **pp_store)
 void
 page_free(struct Page *pp)
 {
-	// Fill this function in
+	LIST_INSERT_HEAD(&page_free_list, pp, pp_link);
 }
 
 //
